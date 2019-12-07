@@ -3,6 +3,12 @@ import mock
 
 import util
 
+try:
+    import apacheconfig  # pylint: disable=import-error,unused-import
+    APACHEV2 = True
+except ImportError: # pragma: no cover
+    APACHEV2 = False
+
 from acme.magic_typing import List  # pylint: disable=unused-import, no-name-in-module
 from certbot import errors
 
@@ -20,6 +26,22 @@ class AugeasParserNodeTest(util.ApacheTest):  # pylint: disable=too-many-public-
             self.config_path, self.vhost_path, self.config_dir, self.work_dir, use_parsernode=True)
         self.vh_truth = util.get_vh_truth(
             self.temp_dir, "debian_apache_2_4/multiple_vhosts")
+
+        # Generic node tests against the `parser_root`. Augeas-specific tests
+        # can be performed on `augeas_root`.
+        self.parser_root = self.config.parser_root
+        self.augeas_root = self.config.parser_root.primary
+        # If apacheconfig isn't included, we only want to test against
+        # the AugeasParserNodes.
+        if not APACHEV2:  # pragma: no cover
+            self.parser_root = self.augeas_root
+
+    def _augeas_metadata(self, obj):
+        # If apacheconfig isn't included, we're already testing against
+        # primary.
+        if APACHEV2:
+            return obj.primary.metadata
+        return obj.metadata  # pragma: no cover
 
     def test_save(self):
         with mock.patch('certbot_apache._internal.parser.ApacheParser.save') as mock_save:
@@ -186,44 +208,44 @@ class AugeasParserNodeTest(util.ApacheTest):  # pylint: disable=too-many-public-
         self.assertTrue(directive.startswith("NewBlock"))
 
     def test_add_child_block_beginning(self):
-        self.config.parser_root.add_child_block(
+        self.parser_root.add_child_block(
             "Beginning",
             position=0
         )
-        parser = self.config.parser_root.primary.parser
-        root_path = self.config.parser_root.primary.metadata["augeaspath"]
+        parser = self.augeas_root.parser
+        root_path = self.augeas_root.metadata["augeaspath"]
         # Get first child
         first = parser.aug.match("{}/*[1]".format(root_path))
         self.assertTrue(first[0].endswith("Beginning"))
 
     def test_add_child_block_append(self):
-        self.config.parser_root.add_child_block(
+        self.parser_root.add_child_block(
             "VeryLast",
         )
-        parser = self.config.parser_root.primary.parser
-        root_path = self.config.parser_root.primary.metadata["augeaspath"]
+        parser = self.augeas_root.parser
+        root_path = self.augeas_root.metadata["augeaspath"]
         # Get last child
         last = parser.aug.match("{}/*[last()]".format(root_path))
         self.assertTrue(last[0].endswith("VeryLast"))
 
     def test_add_child_block_append_alt(self):
-        self.config.parser_root.add_child_block(
+        self.parser_root.add_child_block(
             "VeryLastAlt",
             position=99999
         )
-        parser = self.config.parser_root.primary.parser
-        root_path = self.config.parser_root.primary.metadata["augeaspath"]
+        parser = self.augeas_root.parser
+        root_path = self.augeas_root.metadata["augeaspath"]
         # Get last child
         last = parser.aug.match("{}/*[last()]".format(root_path))
         self.assertTrue(last[0].endswith("VeryLastAlt"))
 
     def test_add_child_block_middle(self):
-        self.config.parser_root.add_child_block(
+        self.parser_root.add_child_block(
             "Middle",
             position=5
         )
-        parser = self.config.parser_root.primary.parser
-        root_path = self.config.parser_root.primary.metadata["augeaspath"]
+        parser = self.augeas_root.parser
+        root_path = self.augeas_root.metadata["augeaspath"]
         # Augeas indices start at 1 :(
         middle = parser.aug.match("{}/*[6]".format(root_path))
         self.assertTrue(middle[0].endswith("Middle"))
@@ -275,16 +297,16 @@ class AugeasParserNodeTest(util.ApacheTest):  # pylint: disable=too-many-public-
         )
 
     def test_add_child_directive(self):
-        self.config.parser_root.add_child_directive(
+        self.parser_root.add_child_directive(
             "ThisWasAdded",
             ["with", "parameters"],
             position=0
         )
-        dirs = self.config.parser_root.find_directives("ThisWasAdded")
+        dirs = self.parser_root.find_directives("ThisWasAdded")
         self.assertEqual(len(dirs), 1)
         self.assertEqual(dirs[0].parameters, ("with", "parameters"))
         # The new directive was added to the very first line of the config
-        self.assertTrue(dirs[0].primary.metadata["augeaspath"].endswith("[1]"))
+        self.assertTrue(self._augeas_metadata(dirs[0])["augeaspath"].endswith("[1]"))
 
     def test_add_child_directive_exception(self):
         self.assertRaises(

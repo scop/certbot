@@ -13,6 +13,13 @@ import six
 import zope.component
 import zope.interface
 
+try:
+    from apacheconfig import make_loader
+    from apacheconfig import flavors
+    APACHEV2 = True
+except ImportError: # pragma: no cover
+    APACHEV2 = False
+
 from acme import challenges
 from acme.magic_typing import DefaultDict  # pylint: disable=unused-import, no-name-in-module
 from acme.magic_typing import Dict  # pylint: disable=unused-import, no-name-in-module
@@ -362,12 +369,17 @@ class ApacheConfigurator(common.Installer):
 
     def get_parsernode_root(self, metadata):
         """Initializes the ParserNode parser root instance."""
-
         apache_vars = dict()
         apache_vars["defines"] = apache_util.parse_defines(self.option("ctl"))
         apache_vars["includes"] = apache_util.parse_includes(self.option("ctl"))
         apache_vars["modules"] = apache_util.parse_modules(self.option("ctl"))
         metadata["apache_vars"] = apache_vars
+
+        if APACHEV2:
+            with make_loader(writable=True, **flavors.NATIVE_APACHE) as loader:
+                with open(self.parser.loc["root"]) as f:
+                    ac_ast = loader.loads(f.read())
+                    metadata["ac_ast"] = ac_ast
 
         return dualparser.DualBlockNode(
             name=assertions.PASS,

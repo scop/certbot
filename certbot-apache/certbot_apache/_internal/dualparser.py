@@ -1,4 +1,10 @@
 """ Dual ParserNode implementation """
+try:
+    import apacheconfig  # pylint: disable=import-error,unused-import
+    APACHEV2 = True
+except ImportError: # pragma: no cover
+    APACHEV2 = False
+
 from certbot_apache._internal import assertions
 from certbot_apache._internal import augeasparser
 from certbot_apache._internal import apacheparser
@@ -173,7 +179,10 @@ class DualBlockNode(DualNodeBase):
             self.secondary = secondary
         else:
             self.primary = augeasparser.AugeasBlockNode(**kwargs)
-            self.secondary = apacheparser.ApacheBlockNode(**kwargs)
+            if APACHEV2:
+                self.secondary = apacheparser.ApacheBlockNode(**kwargs)
+            else:
+                self.secondary = augeasparser.AugeasBlockNode(**kwargs)
 
         assertions.assertEqual(self.primary, self.secondary)
 
