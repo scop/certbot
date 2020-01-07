@@ -730,7 +730,7 @@ class ApacheParser(object):
         :rtype: str
 
         """
-        if sys.version_info < (3, 6):
+        if sys.version_info < (3, 6):  # pragma: no cover
             # This strips off final /Z(?ms)
             return fnmatch.translate(clean_fn_match)[:-7]
         # Since Python 3.6, it returns a different pattern like (?s:.*\.load)\Z

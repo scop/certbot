@@ -2,7 +2,7 @@
 try:
     import apacheconfig  # pylint: disable=import-error,unused-import
     APACHEV2 = True
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     APACHEV2 = False
 
 from certbot_apache._internal import assertions
@@ -181,7 +181,7 @@ class DualBlockNode(DualNodeBase):
             self.primary = augeasparser.AugeasBlockNode(**kwargs)
             if APACHEV2:
                 self.secondary = apacheparser.ApacheBlockNode(**kwargs)
-            else:
+            else:  # pragma: no cover
                 self.secondary = augeasparser.AugeasBlockNode(**kwargs)
 
         assertions.assertEqual(self.primary, self.secondary)
