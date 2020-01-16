@@ -17,6 +17,7 @@ install_requires = [
     'pytest-xdist',
     'python-dateutil',
     'pyyaml',
+    'pythonnet',
     'requests',
     'six',
 ]
